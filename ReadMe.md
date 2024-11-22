@@ -23,8 +23,8 @@ The results are saved in:
 ### **Step 1: Download the Tool**
 1. Go to the GitHub repository hosting Muffin's Treasure Hunting Tool.
 2. Download the correct file for your operating system:
-   - **Windows**: `Muffin_Treasure_Hunt_Windows.zip`
-   - **Mac**: `Muffin_Treasure_Hunt_Mac.zip`
+   - **Windows**: `Muffins_Treasure_Hunt_Windows.zip`
+   - **Mac**: `Muffins_Treasure_Hunt_Mac.zip`
 
 ---
 
@@ -41,15 +41,15 @@ The results are saved in:
 
 ### **Step 3: Run the Tool**
 - **Windows**:
-  1. Double-click the file named `Muffin_Treasure_Hunt_Windows.exe`.
+  1. Double-click the file named `Muffins_Treasure_Hunt_Windows.exe`.
   2. If Windows blocks the program, click **More Info > Run Anyway**.
 - **Mac**:
-  1. Double-click the file named `Muffin_Treasure_Hunt_Mac`.
+  1. Double-click the file named `Muffins_Treasure_Hunt_Mac`.
   2. If macOS blocks the program:
      - Go to **System Preferences > Security & Privacy > Open Anyway**.
      - Alternatively, run the following command in Terminal:
        ```bash
-       xattr -d com.apple.quarantine /path/to/Muffin_Treasure_Hunt_Mac
+       xattr -d com.apple.quarantine /path/to/Muffins_Treasure_Hunt_Mac
        ```
 
 ---
@@ -62,8 +62,8 @@ The results are saved in:
 
 ### **Step 5: View the Results**
 1. Once the scan is complete, two files will be saved on your **Desktop**:
-   - **Muffin_Treasure_Hunt_Results.txt**: A plain text file listing the matches.
-   - **Muffin_Treasure_Hunt_Results.xlsx**: A detailed spreadsheet with:
+   - **Muffins_Treasure_Hunt_Results.txt**: A plain text file listing the matches.
+   - **Muffins_Treasure_Hunt_Results.xlsx**: A detailed spreadsheet with:
      - File Path (clickable).
      - File Name.
      - Keywords Matched.
