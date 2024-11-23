@@ -7,6 +7,7 @@ import time
 import re
 from PyPDF2 import PdfReader
 from docx import Document
+import csv
 import msvcrt  # For Windows keyboard input handling
 
 # Function to display intro with countdown and skip option
@@ -16,7 +17,7 @@ def display_intro():
     print("🐾 Muffin is here to help sniff out crypto treasures!")
     print("\nWhat does this tool do?")
     print("🦴 Searches your drives for crypto wallets, keys, and related treasures.")
-    print("📄 Scans the content of .docx, .pdf, and .txt files for deeper insights.")
+    print("📄 Scans the content of .docx, .pdf, .txt, .csv, .xlsx, and .json files for deeper insights.")
     print("📊 Exports results to both a text file and a spreadsheet.")
     print("\n🐶 Sniffing will start soon... Please be patient!")
     print("------------------------------------------------------------")
@@ -47,7 +48,7 @@ def get_drives():
 KEYWORDS_ICONS = {
     "crypto": "🪙", "wallet": "💰", "bitcoin": "₿", "ethereum": "Ξ", "doge": "🐕",
     "litecoin": "Ł", "key": "🔑", "phrase": "✍️", "secret": "🤫", "password": "🔒",
-    "passphrase": "✏️", "xpub": "📜", "0x": "📬", "backup": "📂", "seed": "🌱", 
+    "passphrase": "✏️", "xpub": "📜", "0x": "📬", "backup": "📂", "seed": "🌱",
     "private": "🕶️", "account": "🧾", "credentials": "📋", "2FA": "🔑"
 }
 IGNORED_EXTENSIONS = [".exe", ".dll", ".sys", ".tmp", ".log", ".ini", ".dat"]
@@ -61,7 +62,7 @@ def is_valid_bitcoin_key(file_name):
     btc_regex = r"\b(5[HJK][1-9A-HJ-NP-Za-km-z]{49,50}|[13][1-9A-HJ-NP-Za-km-z]{26,35})\b"
     return bool(re.search(btc_regex, file_name))
 
-# Search for JSON wallet structures
+# Check JSON wallet structures
 def contains_json_wallet_structure(file_path):
     try:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -71,27 +72,34 @@ def contains_json_wallet_structure(file_path):
         print(f"⚠️ Error reading file {file_path}: {e}", flush=True)
     return False
 
-# Search file content for keywords
+# Scan spreadsheet files
+def scan_spreadsheet(file_path):
+    try:
+        workbook = openpyxl.load_workbook(file_path, read_only=True)
+        for sheet in workbook.sheetnames:
+            ws = workbook[sheet]
+            for row in ws.iter_rows(values_only=True):
+                if any(cell and any(keyword.lower() in str(cell).lower() for keyword in KEYWORDS_ICONS) for cell in row):
+                    return True
+    except Exception as e:
+        print(f"⚠️ Error reading spreadsheet {file_path}: {e}", flush=True)
+    return False
+
+# Scan file content for keywords
 def search_file_content(file_path, keywords):
     try:
-        # TXT file
         if file_path.endswith(".txt"):
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
-                if any(keyword.lower() in content.lower() for keyword in keywords):
-                    return True
-        # DOCX file
+                return any(keyword.lower() in content.lower() for keyword in keywords)
         elif file_path.endswith(".docx"):
             doc = Document(file_path)
             content = "\n".join([para.text for para in doc.paragraphs])
-            if any(keyword.lower() in content.lower() for keyword in keywords):
-                return True
-        # PDF file
+            return any(keyword.lower() in content.lower() for keyword in keywords)
         elif file_path.endswith(".pdf"):
             reader = PdfReader(file_path)
             content = "\n".join([page.extract_text() for page in reader.pages])
-            if any(keyword.lower() in content.lower() for keyword in keywords):
-                return True
+            return any(keyword.lower() in content.lower() for keyword in keywords)
     except Exception as e:
         print(f"⚠️ Error processing file {file_path}: {e}", flush=True)
     return False
@@ -113,33 +121,25 @@ def search_files(drive):
             # Match keywords in file name
             keyword_matches = [kw for kw in KEYWORDS_ICONS if kw.lower() in file_name.lower()]
 
-            # Special handling for "0x" and Ethereum addresses
+            # Handle specific checks
             if "0x" in keyword_matches and not is_valid_ethereum_address(file_name):
                 keyword_matches.remove("0x")
-
-            # Check for Bitcoin public/private keys
             if is_valid_bitcoin_key(file_name):
                 keyword_matches.append("bitcoin_key")
-
-            # Check for JSON wallet structure
             if file_extension == ".json" and contains_json_wallet_structure(file_path):
                 keyword_matches.append("json_wallet")
-
-            # Deep content search for specific file types
+            if file_extension in [".xlsx", ".xls", ".csv"] and scan_spreadsheet(file_path):
+                keyword_matches.append("spreadsheet_content")
             if not keyword_matches and file_extension in [".txt", ".docx", ".pdf"]:
-                print(f"📄 Scanning content of {file_path}...", flush=True)
                 if search_file_content(file_path, KEYWORDS_ICONS.keys()):
-                    keyword_matches = ["content_match"]
+                    keyword_matches.append("content_match")
 
             if keyword_matches:
-                icon = KEYWORDS_ICONS.get(keyword_matches[0], "📄")  # Use first matched keyword's icon
-
-                # Determine Main Folder
-                if root.startswith(f"{drive}Users"):
-                    parts = root.split(os.sep)
-                    main_folder = parts[2] if len(parts) > 2 else "Unknown"
-                else:
-                    main_folder = root.split(os.sep)[1] if platform.system() == "Windows" else root.split("/")[1]
+                icon = KEYWORDS_ICONS.get(keyword_matches[0], "📄")
+                main_folder = (
+                    root.split(os.sep)[2] if root.startswith(f"{drive}Users") and len(root.split(os.sep)) > 2
+                    else root.split(os.sep)[1]
+                )
                 main_folder = main_folder if main_folder.lower() not in ["program files", "windows"] else root.split(os.sep)[2]
 
                 found_items.append({
@@ -150,7 +150,7 @@ def search_files(drive):
                     "File Name": file_name,
                     "File Path": root,
                 })
-                print(f"{icon} Found: {file_name}", flush=True)  # Display filename with an icon
+                print(f"{icon} Found: {file_name}", flush=True)
     return found_items
 
 # Write results to .txt and Excel
