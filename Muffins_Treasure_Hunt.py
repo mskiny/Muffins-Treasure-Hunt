@@ -9,17 +9,46 @@ from PyPDF2 import PdfReader
 from docx import Document
 import csv
 import sys
-import urllib.parse
-import pytesseract  # Added for OCR
-from PIL import Image  # Added for image handling
-
-# Specify the path to the Tesseract executable (adjust the path if necessary)
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
+from itertools import islice
 
 # Paths for results
 DESKTOP_PATH = os.path.join(os.path.expanduser("~"), "Desktop", "Muffins_Treasure_Hunt_Results")
 CONSOLE_LOG_FILE = os.path.join(DESKTOP_PATH, "Muffins_Treasure_Hunt_Console_Log.txt")
 ERROR_LOG_FILE = os.path.join(DESKTOP_PATH, "Muffins_Treasure_Hunt_Errors.txt")
+
+# Ensure the results directory exists
+os.makedirs(DESKTOP_PATH, exist_ok=True)
+
+# Configuration settings (all within the script)
+CONFIG = {
+    "include_paths": [],  # Directories to include (empty means include all)
+    "exclude_paths": [],  # Directories to exclude
+    "include_extensions": [],  # File extensions to include (empty means include all)
+    "exclude_extensions": [
+        ".exe", ".dll", ".sys", ".tmp", ".log", ".ini", ".js", ".ts",
+        ".mp3", ".mp4", ".avi", ".mkv", ".flv", ".mov", ".wmv",
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".psd", ".ai", ".eps", ".svg",
+        ".class", ".jar", ".war", ".ear", ".so", ".a", ".lib", ".o",
+        ".apk", ".ipa", ".bin", ".pak", ".iso", ".plist",
+        ".db", ".db3", ".sql", ".sqlite", ".sqlite3", ".log"
+    ],
+    "log_level": "INFO",  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+    "max_threads": 4  # Number of threads for multithreading
+}
+
+# Set up logging
+logging.basicConfig(
+    level=getattr(logging, CONFIG.get("log_level", "INFO").upper(), logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(CONSOLE_LOG_FILE, mode='w', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger()
 
 # Global Variables
 KEYWORDS_ICONS = {
@@ -27,67 +56,40 @@ KEYWORDS_ICONS = {
     "litecoin": "Ł", "key": "🔑", "phrase": "✍️", "secret": "🤫", "password": "🔒",
     "passphrase": "✏️", "xpub": "📜", "0x": "📬", "backup": "📂", "seed": "🌱",
     "private": "🕶️", "important": "⭐", "credentials": "📋", "blockchain": "⛓️",
-    "coins": "💵", "hash": "🔗", "wallet.dat": "📄", "ripple": "🌊",
-    "stellar": "🌟", "tron": "🚀", "bnb": "⚡", "solana": "☀️",
-    "cardano": "🌌", "mnemonic": "🧠", "recovery": "📦", "restore": "🔄",
-    "seed phrase": "🔐", "secret phrase": "🔓", "metamask": "🦊",
-    "phantom": "👻", "keystore": "📁", "ledger": "📒", "trezor": "🔐",
-    "cold storage": "❄️", "pk": "🗝️", "private_key": "🗝️", "xprv": "📜",
-    "encrypted": "🔒", "kdfparams": "📑", "cipher": "🔐", "ciphertext": "🔏",
-    "btc": "₿", "eth": "Ξ", "ltc": "Ł", "xrp": "🌊", "xlm": "🌟",
-    "ada": "🌌", "trx": "🚀", "json": "📄", "dat": "📄", "ftx": "🚩",
-    "mtgox": "⚠️", "quadrigacx": "❗", "bitconnect": "❌", "cryptopia": "⚡",
-    "nicehash": "💻", "binance": "⚡", "kraken": "🐙", "gemini": "♊",
-    "bitstamp": "📈", "okx": "📊", "huobi": "🔥", "bybit": "📉",
-    "bitfinex": "🏦", "uniswap": "💱", "exodus": "📂", "trustwallet": "🔒",
-    "atomic wallet": "💥", "bluewallet": "🔵", "safepal": "🔐", "guarda": "🔒"
+    "coins": "💵", "hash": "🔗", "wallet.dat": "📄", "mnemonic": "🧠",
+    "recovery": "📦", "restore": "🔄", "seed phrase": "🔐", "secret phrase": "🔓",
+    "metamask": "🦊", "phantom": "👻", "keystore": "📁", "ledger": "📒", "trezor": "🔐",
+    "cold storage": "❄️", "private_key": "🗝️", "xprv": "📜", "encrypted": "🔒",
+    "kdfparams": "📑", "cipher": "🔐", "ciphertext": "🔏", "btc": "₿", "eth": "Ξ",
+    "ltc": "Ł", "xrp": "🌊", "xlm": "🌟", "ada": "🌌", "trx": "🚀", "json": "📄",
+    "dat": "📄", "exodus": "📂", "trustwallet": "🔒", "binance": "⚡", "kraken": "🐙"
 }
 
-# Adjust EXCLUDED_PATHS based on platform
-if platform.system() == "Windows":
-    EXCLUDED_PATHS = ["C:\\Windows", "C:\\Program Files", os.path.expanduser("~\\AppData")]
-else:
-    EXCLUDED_PATHS = ["/System", "/Library", "/Applications", "/bin", "/sbin", "/usr", "/var", "/dev", "/proc", "/run", "/sys"]
+# Folders to exclude (you can add more folders to this list)
+EXCLUDED_FOLDERS = [
+    "node_modules", "__pycache__", ".git", ".svn", "build", "dist",
+    "Library", "Logs", "Temp", "Cache", "Caches", "venv", "env",
+    "VirtualEnv", "Anaconda3", "Miniconda3", "System Volume Information",
+    "$Recycle.Bin"
+] + CONFIG.get("exclude_paths", [])
 
-# File extensions to ignore
-IGNORED_EXTENSIONS = [".exe", ".dll", ".sys", ".tmp", ".log", ".ini", ".dat", ".js", ".ts"]
-
-# Folders to exclude
-EXCLUDED_FOLDERS = ["images", "icons", "img16_16", "img24_24", "img32_32", "sketches"]
+# File extensions to include or exclude
+INCLUDED_EXTENSIONS = CONFIG.get("include_extensions", [])
+IGNORED_EXTENSIONS = CONFIG.get("exclude_extensions", [])
 
 SEED_WORD_COUNTS = [12, 15, 18, 21, 24]
 
-# Logger class with flush method
-class Logger:
-    def __init__(self, log_file):
-        self.terminal = sys.stdout
-        self.log_file = open(log_file, "w", encoding="utf-8")
-
-    def write(self, message):
-        self.terminal.write(message)
-        self.log_file.write(message)
-
-    def flush(self):
-        self.terminal.flush()
-        self.log_file.flush()
-
-os.makedirs(DESKTOP_PATH, exist_ok=True)
-sys.stdout = Logger(CONSOLE_LOG_FILE)
-
+# Load mnemonic wordlist
 def load_mnemonic_wordlist():
-    """
-    Load the mnemonic wordlist from an external file.
-    """
     wordlist_file = os.path.join(os.path.dirname(__file__), "bip39_wordlist.txt")
     try:
         with open(wordlist_file, "r", encoding="utf-8") as f:
             words = f.read().splitlines()
             return set(words)
     except Exception as e:
-        print(f"❌ Error loading mnemonic wordlist: {e}")
+        logger.error(f"Error loading mnemonic wordlist: {e}")
         sys.exit(1)
 
-# Load the wordlist
 MNEMONIC_WORDLIST = load_mnemonic_wordlist()
 
 def get_drives():
@@ -98,7 +100,7 @@ def get_drives():
         import string
         return [f"{d}:\\" for d in string.ascii_uppercase if os.path.exists(f"{d}:\\")]
     else:
-        return [os.path.expanduser("~")]
+        return ["/"]
 
 def display_intro_and_select_drives():
     """
@@ -108,8 +110,7 @@ def display_intro_and_select_drives():
     print("🐾 Muffin is here to help sniff out crypto treasures!")
     print("\nWhat does this tool do?")
     print("🦴 Searches your drives for crypto wallets, keys, and related treasures.")
-    print("📄 Scans files for sensitive data, including text, spreadsheets, images, and more.")
-    print("🖼️  Uses OCR to scan images for text related to crypto treasures.")
+    print("📄 Scans files for sensitive data, including text, spreadsheets, and more.")
     print("📊 Exports results to both a text file and a spreadsheet.")
     print("\n🐶 Let’s get started! Muffin is ready to sniff out hidden treasures!")
     print("\n------------------------------------------------------------\n")
@@ -117,60 +118,57 @@ def display_intro_and_select_drives():
     # Detect drives
     drives = get_drives()
     if not drives:
-        print("🚫 No drives detected. Exiting...")
+        logger.error("No drives detected. Exiting...")
         sys.exit(0)
 
     if platform.system() == "Windows":
         print(f"1. Type ALL to scan all of the 📂 Detected Drives: {' '.join(drives)}")
         print("2. Or type only drive letters you want to scan separated by spaces (e.g., C or C D or E).")
     else:
-        print(f"📂 On this system, only the home directory can be scanned: {drives[0]}")
+        print(f"📂 On this system, the following drives are detected: {' '.join(drives)}")
+        print("1. Type ALL to scan all detected drives.")
+        print("2. Or type the paths you want to scan separated by spaces (e.g., / or / /mnt/data).")
 
     print()  # Adds a blank line for better readability
     print("✨Type your answer and press Enter to continue:", flush=True)  # Ensures immediate display
 
     # User input for drive selection
     response = input().strip().upper()
-    if platform.system() != "Windows":
-        # For non-Windows systems, only home directory is scanned
-        print("⚠️ On non-Windows systems, only the home directory is available for scanning.")
-        return drives
-
     if response == "ALL":
         return drives
     else:
         selected_drives = []
-        for d in response.split():
-            drive = f"{d.upper()}:\\" if not d.endswith(":\\") else d.upper()
-            if drive in drives:
-                selected_drives.append(drive)
-            else:
-                print(f"🚫 Drive {d} is not a valid drive.")
+        if platform.system() == "Windows":
+            for d in response.split():
+                drive = f"{d.upper()}:\\" if not d.endswith(":\\") else d.upper()
+                if drive in drives:
+                    selected_drives.append(drive)
+                else:
+                    logger.warning(f"Drive {d} is not a valid drive.")
+        else:
+            for d in response.split():
+                if os.path.exists(d):
+                    selected_drives.append(d)
+                else:
+                    logger.warning(f"Path {d} is not a valid path.")
         if not selected_drives:
-            print("🚫 No valid drives selected. Exiting...")
+            logger.error("No valid drives selected. Exiting...")
             sys.exit(0)
         return selected_drives
 
-def log_error(message):
+def is_valid_ethereum_address(address):
     """
-    Log errors to the error log file and print them to the console.
+    Check if a string is a valid Ethereum address.
     """
-    print(f"❌ {message}", flush=True)
-    with open(ERROR_LOG_FILE, "a", encoding="utf-8") as error_log:
-        error_log.write(f"{message}\n")
+    match = re.fullmatch(r"0x[a-fA-F0-9]{40}", address)
+    return bool(match)
 
-def is_valid_ethereum_address(file_name):
+def is_valid_bitcoin_address(address):
     """
-    Check if a string in the file name is a valid Ethereum address.
+    Check if a string is a valid Bitcoin address.
     """
-    return bool(re.search(r"\b0x[a-fA-F0-9]{40}\b", file_name))
-
-def is_valid_bitcoin_key(file_name):
-    """
-    Check if a string in the file name is a valid Bitcoin address or key.
-    """
-    btc_regex = r"\b(1|3|bc1)[a-zA-HJ-NP-Z0-9]{25,62}\b"
-    return bool(re.search(btc_regex, file_name))
+    btc_regex = r"^(1|3|bc1)[a-zA-HJ-NP-Z0-9]{25,39}$"
+    return bool(re.match(btc_regex, address))
 
 def contains_json_wallet_structure(file_path):
     """
@@ -179,9 +177,9 @@ def contains_json_wallet_structure(file_path):
     try:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
-            return any(key in content for key in ["ciphertext", "cipherparams", "kdfparams", "mac", "address"])
+            return any(key in content for key in ["ciphertext", "cipherparams", "kdfparams", "mac", "address", "version"])
     except Exception as e:
-        log_error(f"Error reading JSON file {file_path}: {e}")
+        logger.debug(f"Error reading JSON file {file_path}: {e}")
     return False
 
 def scan_spreadsheet(file_path):
@@ -196,14 +194,14 @@ def scan_spreadsheet(file_path):
                     if any(cell and any(keyword.lower() in str(cell).lower() for keyword in KEYWORDS_ICONS) for cell in row):
                         return True
         else:
-            workbook = openpyxl.load_workbook(file_path, read_only=True)
+            workbook = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
             for sheet in workbook.sheetnames:
                 ws = workbook[sheet]
                 for row in ws.iter_rows(values_only=True):
                     if any(cell and any(keyword.lower() in str(cell).lower() for keyword in KEYWORDS_ICONS) for cell in row):
                         return True
     except Exception as e:
-        log_error(f"Error reading spreadsheet {file_path}: {e}")
+        logger.debug(f"Error reading spreadsheet {file_path}: {e}")
     return False
 
 def detect_seed_phrase(content):
@@ -218,22 +216,6 @@ def detect_seed_phrase(content):
                 return True
     return False
 
-def ocr_image(file_path):
-    """
-    Perform OCR on an image file to extract text and return matched keywords.
-    """
-    try:
-        text = pytesseract.image_to_string(Image.open(file_path))
-        matched_keywords = [keyword for keyword in KEYWORDS_ICONS if keyword.lower() in text.lower()]
-        if detect_seed_phrase(text):
-            matched_keywords.append('seed_phrase')
-        return matched_keywords
-    except pytesseract.TesseractNotFoundError:
-        log_error("Tesseract OCR is not installed or not found in PATH. Please install Tesseract and ensure it's accessible.")
-    except Exception as e:
-        log_error(f"Error processing image {file_path}: {e}")
-    return []
-
 def search_file_content(file_path):
     """
     Search the content of a file for crypto-related keywords and seed phrases.
@@ -242,119 +224,92 @@ def search_file_content(file_path):
         if file_path.endswith(".txt") or '.' not in os.path.basename(file_path):
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
-                if any(keyword.lower() in content.lower() for keyword in KEYWORDS_ICONS):
-                    return True
-                if detect_seed_phrase(content):
-                    return True
         elif file_path.endswith(".docx"):
             doc = Document(file_path)
-            full_text = []
-            for para in doc.paragraphs:
-                full_text.append(para.text)
-            content = "\n".join(full_text)
-            if any(keyword.lower() in content.lower() for keyword in KEYWORDS_ICONS):
-                return True
-            if detect_seed_phrase(content):
-                return True
+            content = "\n".join(para.text for para in doc.paragraphs)
         elif file_path.endswith(".pdf"):
             reader = PdfReader(file_path)
-            full_text = []
-            for page in reader.pages:
-                text = page.extract_text()
-                if text:
-                    full_text.append(text)
-            content = "\n".join(full_text)
-            if any(keyword.lower() in content.lower() for keyword in KEYWORDS_ICONS):
-                return True
-            if detect_seed_phrase(content):
-                return True
+            content = "\n".join(page.extract_text() or '' for page in reader.pages)
+        else:
+            return False  # Unsupported file type for content scanning
+
+        if any(keyword.lower() in content.lower() for keyword in KEYWORDS_ICONS):
+            return True
+        if detect_seed_phrase(content):
+            return True
     except Exception as e:
-        log_error(f"Error processing file {file_path}: {e}")
+        logger.debug(f"Error processing file {file_path}: {e}")
     return False
+
+def process_file(file_path):
+    """
+    Process a single file to check for crypto-related content.
+    """
+    try:
+        file_name = os.path.basename(file_path)
+        file_extension = os.path.splitext(file_name)[1].lower()
+
+        if IGNORED_EXTENSIONS and file_extension in IGNORED_EXTENSIONS:
+            return None
+
+        if INCLUDED_EXTENSIONS and file_extension not in INCLUDED_EXTENSIONS:
+            return None
+
+        keyword_matches = [kw for kw in KEYWORDS_ICONS if kw.lower() in file_name.lower()]
+
+        if "0x" in keyword_matches and not is_valid_ethereum_address(file_name):
+            keyword_matches.remove("0x")
+        if is_valid_bitcoin_address(file_name):
+            keyword_matches.append("bitcoin_address")
+        if file_extension == ".json" and contains_json_wallet_structure(file_path):
+            keyword_matches.append("json_wallet")
+        if file_extension in [".xlsx", ".xls", ".csv"] and scan_spreadsheet(file_path):
+            keyword_matches.append("spreadsheet_content")
+        if (not keyword_matches and file_extension in [".txt", ".docx", ".pdf", ".json"]):
+            if search_file_content(file_path):
+                keyword_matches.append("content_match")
+
+        if keyword_matches:
+            icon = KEYWORDS_ICONS.get(keyword_matches[0], "📄")
+            main_folder = os.path.basename(os.path.dirname(file_path))
+
+            result = {
+                "Drive": os.path.splitdrive(file_path)[0],
+                "Main Folder": main_folder,
+                "Keyword Match": ", ".join(set(keyword_matches)),
+                "File Extension": file_extension,
+                "File Name": file_name,
+                "File Path": file_path,
+            }
+            logger.info(f"{icon} Found: {file_name}")
+            return result
+    except Exception as e:
+        logger.debug(f"Error processing file {file_path}: {e}")
+    return None
 
 def search_files(drive):
     """
     Recursively searches the specified drive for files matching crypto-related keywords.
     """
     found_items = []
-    print(f"🔍 Searching drive {drive}...", flush=True)
+    file_paths = []
 
-    # Normalize the drive letter to lower case for consistent comparison
-    drive_letter = os.path.splitdrive(drive)[0].lower()
-
-    # Filter EXCLUDED_PATHS to include only those on the same drive
-    excluded_paths_on_same_drive = [
-        os.path.abspath(excluded) for excluded in EXCLUDED_PATHS
-        if os.path.splitdrive(excluded)[0].lower() == drive_letter
-    ]
-
-    for root, dirs, files in os.walk(drive, topdown=True, followlinks=False):
-        normalized_root = os.path.abspath(root)
-
-        # Exclude specified folders
-        dirs[:] = [d for d in dirs if d.lower() not in EXCLUDED_FOLDERS]
-
-        # Check if the current root is within any excluded paths
-        exclude = False
-        for excluded in excluded_paths_on_same_drive:
-            if normalized_root.lower().startswith(excluded.lower()):
-                exclude = True
-                break
-        if exclude:
-            continue
-
-        print(f"📂 Scanning directory: {root}", flush=True)
+    logger.info(f"🔍 Searching drive {drive}...")
+    for root, dirs, files in os.walk(drive, topdown=True):
+        # Exclude irrelevant folders
+        dirs[:] = [d for d in dirs if d not in EXCLUDED_FOLDERS]
         for file in files:
             file_path = os.path.join(root, file)
-            file_name = file
-            file_extension = os.path.splitext(file)[1].lower()
+            file_paths.append(file_path)
 
-            if file_extension in IGNORED_EXTENSIONS:
-                continue
+    # Use multithreading to process files
+    with ThreadPoolExecutor(max_workers=CONFIG.get("max_threads", 4)) as executor:
+        futures = {executor.submit(process_file, fp): fp for fp in file_paths}
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Scanning files"):
+            result = future.result()
+            if result:
+                found_items.append(result)
 
-            keyword_matches = [kw for kw in KEYWORDS_ICONS if kw.lower() in file_name.lower()]
-
-            if "0x" in keyword_matches and not is_valid_ethereum_address(file_name):
-                keyword_matches.remove("0x")
-            if is_valid_bitcoin_key(file_name):
-                keyword_matches.append("bitcoin_key")
-            if file_extension == ".json" and contains_json_wallet_structure(file_path):
-                keyword_matches.append("json_wallet")
-            if file_extension in [".xlsx", ".xls", ".csv"] and scan_spreadsheet(file_path):
-                keyword_matches.append("spreadsheet_content")
-            if (not keyword_matches and (file_extension in [".txt", ".docx", ".pdf"] or '.' not in file_name)):
-                if search_file_content(file_path):
-                    keyword_matches.append("content_match")
-
-            # Include images with keywords in filenames or OCR matches
-            if file_extension in [".png", ".jpg", ".jpeg", ".gif"]:
-                ocr_matches = []
-                if any(kw.lower() in file_name.lower() for kw in KEYWORDS_ICONS):
-                    keyword_matches.append("image_keyword_match")
-                else:
-                    # Perform OCR on the image
-                    ocr_matches = ocr_image(file_path)
-                    if ocr_matches:
-                        keyword_matches.extend(ocr_matches)
-                        print(f"🖼️ OCR Match in Image: {file_name}", flush=True)
-
-            if keyword_matches:
-                icon = KEYWORDS_ICONS.get(keyword_matches[0], "📄")
-                main_folder = (
-                    normalized_root.split(os.sep)[2] if normalized_root.startswith(f"{drive}Users") and len(normalized_root.split(os.sep)) > 2
-                    else normalized_root.split(os.sep)[1] if len(normalized_root.split(os.sep)) > 1 else normalized_root
-                )
-                main_folder = main_folder if main_folder.lower() not in ["program files", "windows"] else normalized_root.split(os.sep)[2] if len(normalized_root.split(os.sep)) > 2 else normalized_root
-
-                found_items.append({
-                    "Drive": drive[0],
-                    "Main Folder": main_folder,
-                    "Keyword Match": ", ".join(set(keyword_matches)),
-                    "File Extension": file_extension,
-                    "File Name": file_name,
-                    "File Path": file_path,
-                })
-                print(f"{icon} Found: {file_name}", flush=True)
     return found_items
 
 def export_results(found_items):
@@ -400,10 +355,10 @@ def export_results(found_items):
 
     workbook.save(excel_file)
 
-    print("\n🎉 Export Complete!")
-    print(f"📄 Text File: {text_file}")
-    print(f"📊 Spreadsheet: {excel_file}")
-    print(f"🏆 Total treasures found: {len(found_items)} 🐾", flush=True)
+    logger.info("\n🎉 Export Complete!")
+    logger.info(f"📄 Text File: {text_file}")
+    logger.info(f"📊 Spreadsheet: {excel_file}")
+    logger.info(f"🏆 Total treasures found: {len(found_items)} 🐾")
 
 def muffins_treasure_hunt():
     """
@@ -418,11 +373,11 @@ def muffins_treasure_hunt():
     export_results(all_found_items)
     end_time = time.time()
     total_time = end_time - start_time
-    print(f"\n⏰ Total time taken: {total_time:.2f} seconds")
-    print("\n🐶 Muffin's hunt is complete! Happy treasure hunting! 🦴", flush=True)
+    logger.info(f"\n⏰ Total time taken: {total_time:.2f} seconds")
+    logger.info("\n🐶 Muffin's hunt is complete! Happy treasure hunting! 🦴")
 
 if __name__ == "__main__":
     try:
         muffins_treasure_hunt()
     except KeyboardInterrupt:
-        print("\n🛑 Scan interrupted by user. Exiting gracefully.", flush=True)
+        logger.warning("\n🛑 Scan interrupted by user. Exiting gracefully.")
