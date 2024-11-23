@@ -35,8 +35,8 @@ CONFIG = {
         ".apk", ".ipa", ".bin", ".pak", ".iso", ".plist",
         ".db", ".db3", ".sql", ".sqlite", ".sqlite3", ".log"
     ],
-    "log_level": "INFO",  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
-    "max_threads": 4  # Number of threads for multithreading
+    "log_level": "INFO",  # Set to "DEBUG" for more detailed logs
+    "max_threads": 4  # Adjust based on your system's capabilities
 }
 
 # Set up logging
@@ -65,7 +65,7 @@ KEYWORDS_ICONS = {
     "dat": "📄", "exodus": "📂", "trustwallet": "🔒", "binance": "⚡", "kraken": "🐙"
 }
 
-# Folders to exclude (you can add more folders to this list)
+# Folders to exclude
 EXCLUDED_FOLDERS = [
     "node_modules", "__pycache__", ".git", ".svn", "build", "dist",
     "Library", "Logs", "Temp", "Cache", "Caches", "venv", "env",
