@@ -8,9 +8,28 @@ import re
 from PyPDF2 import PdfReader
 from docx import Document
 import csv
+import sys
 import msvcrt  # For Windows keyboard input handling
 
-# Function to display intro with countdown and skip option
+DESKTOP_PATH = os.path.join(os.path.expanduser("~"), "Desktop", "Muffins_Treasure_Hunt_Results")
+CONSOLE_LOG_FILE = os.path.join(DESKTOP_PATH, "Muffins_Treasure_Hunt_Console_Log.txt")
+ERROR_LOG_FILE = os.path.join(DESKTOP_PATH, "Muffins_Treasure_Hunt_Errors.txt")
+
+class Logger:
+    def __init__(self, log_file):
+        self.terminal = sys.stdout
+        self.log_file = open(log_file, "w", encoding="utf-8")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log_file.write(message)
+
+    def flush(self):
+        pass
+
+os.makedirs(DESKTOP_PATH, exist_ok=True)
+sys.stdout = Logger(CONSOLE_LOG_FILE)
+
 def display_intro():
     countdown = 30
     print("🔍 Welcome to Muffin's Treasure Hunting Tool!")
@@ -25,8 +44,8 @@ def display_intro():
 
     while countdown > 0:
         print(f"\r⏳ Starting in {countdown} seconds...", end="", flush=True)
-        if msvcrt.kbhit():  # Check if a key is pressed
-            msvcrt.getch()  # Consume the keypress
+        if msvcrt.kbhit():
+            msvcrt.getch()
             print("\r🚀 Skipping countdown and starting immediately!          ", flush=True)
             break
         time.sleep(1)
@@ -34,60 +53,64 @@ def display_intro():
 
     print("\n🚀 Starting search now!", flush=True)
 
-# Get available drives
 def get_drives():
     if platform.system() == "Windows":
         import string
         return [f"{d}:\\" for d in string.ascii_uppercase if os.path.exists(f"{d}:\\")]
-    elif platform.system() == "Darwin":  # macOS
-        return ["/"]  # Start from root for macOS
+    elif platform.system() == "Darwin":
+        return ["/"]
     else:
-        return ["/"]  # Generic fallback for Unix/Linux systems
+        return ["/"]
 
-# Define keywords, their icons, and ignored extensions
 KEYWORDS_ICONS = {
     "crypto": "🪙", "wallet": "💰", "bitcoin": "₿", "ethereum": "Ξ", "doge": "🐕",
     "litecoin": "Ł", "key": "🔑", "phrase": "✍️", "secret": "🤫", "password": "🔒",
     "passphrase": "✏️", "xpub": "📜", "0x": "📬", "backup": "📂", "seed": "🌱",
     "private": "🕶️", "account": "🧾", "credentials": "📋", "2FA": "🔑"
 }
-IGNORED_EXTENSIONS = [".exe", ".dll", ".sys", ".tmp", ".log", ".ini", ".dat", ".js", ".ts", ".png", ".jpg", ".jpeg", ".gif", ".svg"]
+IGNORED_EXTENSIONS = [".exe", ".dll", ".sys", ".tmp", ".log", ".ini", ".dat", ".js", ".ts"]
 EXCLUDED_FOLDERS = ["images", "icons", "img16_16", "img24_24", "img32_32", "sketches"]
 EXCLUDED_PATHS = ["C:\\Windows", "Program Files", "AppData", "Local", "Cache"]
 
-# Validate Ethereum addresses
+def log_error(message):
+    with open(ERROR_LOG_FILE, "a", encoding="utf-8") as error_log:
+        error_log.write(f"{message}\n")
+
 def is_valid_ethereum_address(file_name):
     return bool(re.search(r"\b0x[a-fA-F0-9]{40}\b", file_name))
 
-# Validate Bitcoin public or private keys
 def is_valid_bitcoin_key(file_name):
     btc_regex = r"\b(5[HJK][1-9A-HJ-NP-Za-km-z]{49,50}|[13][1-9A-HJ-NP-Za-km-z]{26,35})\b"
     return bool(re.search(btc_regex, file_name))
 
-# Check JSON wallet structures
 def contains_json_wallet_structure(file_path):
     try:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
             return any(key in content for key in ["ciphertext", "cipherparams", "kdfparams", "mac", "address"])
     except Exception as e:
-        print(f"⚠️ Error reading file {file_path}: {e}", flush=True)
+        log_error(f"Error reading JSON file {file_path}: {e}")
     return False
 
-# Scan spreadsheet files
 def scan_spreadsheet(file_path):
     try:
-        workbook = openpyxl.load_workbook(file_path, read_only=True)
-        for sheet in workbook.sheetnames:
-            ws = workbook[sheet]
-            for row in ws.iter_rows(values_only=True):
-                if any(cell and any(keyword.lower() in str(cell).lower() for keyword in KEYWORDS_ICONS) for cell in row):
-                    return True
+        if file_path.endswith(".csv"):
+            with open(file_path, "r", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if any(cell and any(keyword.lower() in str(cell).lower() for keyword in KEYWORDS_ICONS) for cell in row):
+                        return True
+        else:
+            workbook = openpyxl.load_workbook(file_path, read_only=True)
+            for sheet in workbook.sheetnames:
+                ws = workbook[sheet]
+                for row in ws.iter_rows(values_only=True):
+                    if any(cell and any(keyword.lower() in str(cell).lower() for keyword in KEYWORDS_ICONS) for cell in row):
+                        return True
     except Exception as e:
-        print(f"⚠️ Error reading spreadsheet {file_path}: {e}", flush=True)
+        log_error(f"Error reading spreadsheet {file_path}: {e}")
     return False
 
-# Scan file content for keywords
 def search_file_content(file_path, keywords):
     try:
         if file_path.endswith(".txt"):
@@ -103,15 +126,13 @@ def search_file_content(file_path, keywords):
             content = "\n".join([page.extract_text() for page in reader.pages])
             return any(keyword.lower() in content.lower() for keyword in keywords)
     except Exception as e:
-        print(f"⚠️ Error processing file {file_path}: {e}", flush=True)
+        log_error(f"Error processing file {file_path}: {e}")
     return False
 
-# Recursive search
 def search_files(drive):
     found_items = []
     print(f"🔍 Searching drive {drive}...", flush=True)
     for root, dirs, files in os.walk(drive):
-        # Exclude unwanted paths and folders
         if any(excluded in root for excluded in EXCLUDED_PATHS + EXCLUDED_FOLDERS):
             continue
         for file in files:
@@ -119,14 +140,11 @@ def search_files(drive):
             file_name = os.path.basename(file)
             file_extension = os.path.splitext(file)[1].lower()
 
-            # Skip ignored extensions
-            if file_extension in IGNORED_EXTENSIONS:
+            if file_extension in IGNORED_EXTENSIONS and not file_extension in [".png", ".jpg", ".jpeg", ".gif"]:
                 continue
 
-            # Match keywords in file name
             keyword_matches = [kw for kw in KEYWORDS_ICONS if kw.lower() in file_name.lower()]
 
-            # Handle specific checks
             if "0x" in keyword_matches and not is_valid_ethereum_address(file_name):
                 keyword_matches.remove("0x")
             if is_valid_bitcoin_key(file_name):
@@ -158,35 +176,27 @@ def search_files(drive):
                 print(f"{icon} Found: {file_name}", flush=True)
     return found_items
 
-# Write results to .txt and Excel
 def export_results(found_items):
-    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop", "Muffins_Treasure_Hunt_Results")
-    os.makedirs(desktop_path, exist_ok=True)
-    text_file = os.path.join(desktop_path, "Muffins_Treasure_Hunt_Path_Log.txt")
-    excel_file = os.path.join(desktop_path, "Muffins_Treasure_Hunt_Results.xlsx")
+    text_file = os.path.join(DESKTOP_PATH, "Muffins_Treasure_Hunt_Path_Log.txt")
+    excel_file = os.path.join(DESKTOP_PATH, "Muffins_Treasure_Hunt_Results.xlsx")
 
-    # Write to .txt
     with open(text_file, "w", encoding="utf-8") as txt:
         txt.write("🔍 Muffin's Treasure Hunt Results\n")
         txt.write(f"🏆 Total treasures found: {len(found_items)}\n\n")
         for item in found_items:
             txt.write(f"Drive: {item['Drive']} | Folder: {item['Main Folder']} | File: {item['File Name']} | Path: {item['File Path']}\n")
 
-    # Write to Excel
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = "Muffin's Results"
 
-    # Define headers
     headers = ["Drive", "Main Folder", "Keyword Match", "File Extension", "File Name", "File Path"]
     for col, header in enumerate(headers, 1):
         cell = sheet.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True)
 
-    # Enable filters
     sheet.auto_filter.ref = f"A1:{get_column_letter(len(headers))}1"
 
-    # Populate rows
     for row, item in enumerate(found_items, 2):
         sheet.cell(row=row, column=1, value=item["Drive"])
         sheet.cell(row=row, column=2, value=item["Main Folder"])
@@ -194,13 +204,11 @@ def export_results(found_items):
         sheet.cell(row=row, column=4, value=item["File Extension"])
         sheet.cell(row=row, column=5, value=item["File Name"])
         path_cell = sheet.cell(row=row, column=6, value=item["File Path"])
-        path_cell.hyperlink = f"file:///{item['File Path']}"  # Make the path clickable
+        path_cell.hyperlink = f"file:///{item['File Path']}"
 
-    # Adjust column widths
     for col in range(1, len(headers) + 1):
         sheet.column_dimensions[get_column_letter(col)].width = 25
 
-    # Save the spreadsheet
     workbook.save(excel_file)
 
     print("\n🎉 Export Complete!")
@@ -208,7 +216,6 @@ def export_results(found_items):
     print(f"📊 Spreadsheet: {excel_file}")
     print(f"🏆 Total treasures found: {len(found_items)} 🐾", flush=True)
 
-# Main Function
 def muffins_treasure_hunt():
     display_intro()
     drives = get_drives()
@@ -222,6 +229,5 @@ def muffins_treasure_hunt():
     export_results(all_found_items)
     print("\n🐶 Muffin's hunt is complete! Happy treasure hunting! 🦴", flush=True)
 
-# Run the tool
 if __name__ == "__main__":
     muffins_treasure_hunt()
