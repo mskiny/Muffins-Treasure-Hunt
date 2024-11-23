@@ -6,24 +6,40 @@
 
 ## 🐶 What Does This Tool Do?
 
-Muffin's Treasure Hunting Tool scans your computer for crypto-related files, such as wallet backups, recovery phrases, or sensitive keys. It searches through all storage drives (internal and external) for keywords related to cryptocurrency wallets, private keys, and other important crypto-related information.
+Muffin's Treasure Hunting Tool scans your computer for crypto-related files, such as wallet backups, recovery phrases, sensitive keys, or JSON wallet files. It searches through all storage drives (internal and external) for keywords related to cryptocurrency wallets, private keys, Ethereum and Bitcoin addresses, and other important crypto-related information.
 
 The results are saved in:
 
-1. **A text file** for easy viewing.
-2. **A spreadsheet** with advanced filtering, sorting, and clickable paths.
+1. **A text file** for quick and easy viewing.
+2. **A spreadsheet** with advanced filtering, sorting, and clickable paths for easier navigation.
 
 ---
 
 ## 🚀 Features:
 
-- **Search for Crypto Wallets and Keys:** Includes keywords like "crypto," "wallet," "bitcoin," "ethereum," "password," and more. Supports popular and legacy wallet names like MetaMask, Phantom, and Electrum.
-- **Scans File Contents:** Searches the contents of `.txt`, `.docx`, and `.pdf` files for relevant keywords.
-- **Smart Folder Detection:** Displays the most meaningful folder name for results, including specific user folders like `Documents` or `Desktop`.
-- **Dynamic Drive Scanning:** Automatically detects and scans all available drives, including external flash drives.
-- **Friendly Console Display:** Real-time progress updates, emojis, and countdown timer.
-- **Easy-to-Read Results:** Outputs results to a text file and a filterable spreadsheet with clickable paths for easy navigation.
-- **Cross-Platform:** Compatible with Windows and macOS.
+- **Comprehensive Crypto File Search:**  
+   - Includes keywords like "crypto," "wallet," "bitcoin," "ethereum," "password," "private," and many more.
+   - Supports identifying JSON wallet structures (e.g., MetaMask, MyEtherWallet).  
+   - Detects Ethereum and Bitcoin public/private keys.  
+
+- **Deep Content Scanning:**  
+   - Scans `.txt`, `.docx`, and `.pdf` files for specific crypto-related keywords and structures.  
+
+- **Smart Folder Detection:**  
+   - Displays the most meaningful folder name for results, such as `Desktop` or `Documents`, instead of generic ones like `Users`.  
+
+- **Dynamic Drive Scanning:**  
+   - Automatically detects and scans all available storage drives, including external flash drives.  
+
+- **User-Friendly Console Display:**  
+   - Real-time progress logs with fun emojis and live updates of files being scanned.  
+   - A 30-second countdown timer before starting, with an option to skip.  
+
+- **Export-Friendly Results:**  
+   - Text and spreadsheet exports with drive, folder, and file details, plus clickable links to file locations.  
+
+- **Cross-Platform Compatibility:**  
+   - Works seamlessly on Windows and macOS.  
 
 ---
 
@@ -69,9 +85,14 @@ The results are saved in:
 
 ### Step 4: Watch the Magic  
 
-1. **Welcome Screen:** The program will display a fun intro screen, including a 30-second countdown (press any key to skip).  
-2. **Drive Detection:** Muffin will list the drives being scanned, such as `C:\` or `/Volumes/ExternalDrive`.  
-3. **Real-Time Logging:** As Muffin sniffs through your files, you'll see updates in the console with fun icons and file names.  
+1. **Welcome Screen:**  
+   The program will display a fun intro screen with a 30-second countdown (press any key to skip).  
+
+2. **Drive Detection:**  
+   Muffin will automatically list all detected drives, such as `C:\` or `/Volumes/ExternalDrive`.  
+
+3. **Real-Time Logging:**  
+   As Muffin sniffs through your files, you'll see updates in the console with file names and matching icons for relevant keywords.  
 
 ---
 
