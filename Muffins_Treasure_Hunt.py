@@ -12,7 +12,6 @@ import sys
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
-from itertools import islice
 
 # Paths for results
 DESKTOP_PATH = os.path.join(os.path.expanduser("~"), "Desktop", "Muffins_Treasure_Hunt_Results")
@@ -22,10 +21,10 @@ ERROR_LOG_FILE = os.path.join(DESKTOP_PATH, "Muffins_Treasure_Hunt_Errors.txt")
 # Ensure the results directory exists
 os.makedirs(DESKTOP_PATH, exist_ok=True)
 
-# Configuration settings (all within the script)
+# Configuration settings
 CONFIG = {
     "include_paths": [],  # Directories to include (empty means include all)
-    "exclude_paths": [],  # Directories to exclude
+    "exclude_paths": [],  # Additional directories to exclude
     "include_extensions": [],  # File extensions to include (empty means include all)
     "exclude_extensions": [
         ".exe", ".dll", ".sys", ".tmp", ".log", ".ini", ".js", ".ts",
@@ -33,7 +32,8 @@ CONFIG = {
         ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".psd", ".ai", ".eps", ".svg",
         ".class", ".jar", ".war", ".ear", ".so", ".a", ".lib", ".o",
         ".apk", ".ipa", ".bin", ".pak", ".iso", ".plist",
-        ".db", ".db3", ".sql", ".sqlite", ".sqlite3", ".log"
+        ".db", ".db3", ".sql", ".sqlite", ".sqlite3",
+        ".pem", ".key"  # Added to exclude certificate and key files
     ],
     "log_level": "INFO",  # Set to "DEBUG" for more detailed logs
     "max_threads": 4  # Adjust based on your system's capabilities
@@ -52,25 +52,61 @@ logger = logging.getLogger()
 
 # Global Variables
 KEYWORDS_ICONS = {
-    "crypto": "🪙", "wallet": "💰", "bitcoin": "₿", "ethereum": "Ξ", "doge": "🐕",
-    "litecoin": "Ł", "key": "🔑", "phrase": "✍️", "secret": "🤫", "password": "🔒",
-    "passphrase": "✏️", "xpub": "📜", "0x": "📬", "backup": "📂", "seed": "🌱",
-    "private": "🕶️", "important": "⭐", "credentials": "📋", "blockchain": "⛓️",
-    "coins": "💵", "hash": "🔗", "wallet.dat": "📄", "mnemonic": "🧠",
-    "recovery": "📦", "restore": "🔄", "seed phrase": "🔐", "secret phrase": "🔓",
-    "metamask": "🦊", "phantom": "👻", "keystore": "📁", "ledger": "📒", "trezor": "🔐",
-    "cold storage": "❄️", "private_key": "🗝️", "xprv": "📜", "encrypted": "🔒",
-    "kdfparams": "📑", "cipher": "🔐", "ciphertext": "🔏", "btc": "₿", "eth": "Ξ",
-    "ltc": "Ł", "xrp": "🌊", "xlm": "🌟", "ada": "🌌", "trx": "🚀", "json": "📄",
-    "dat": "📄", "exodus": "📂", "trustwallet": "🔒", "binance": "⚡", "kraken": "🐙"
+    "crypto": "🪙",
+    "wallet": "💰",
+    "bitcoin": "₿",
+    "ethereum": "Ξ",
+    "doge": "🐕",
+    "key": "🔑",
+    "phrase": "✍️",
+    "secret": "🤫",
+    "password": "🔒",
+    "passphrase": "✏️",
+    "xpub": "📜",
+    "0x": "📬",
+    "backup": "📂",
+    "seed": "🌱",
+    "private": "🕶️",
+    "credentials": "📋",
+    "blockchain": "⛓️",
+    "coins": "💵",
+    "hash": "🔗",
+    "wallet.dat": "📄",
+    "mnemonic": "🧠",
+    "recovery": "📦",
+    "restore": "🔄",
+    "seed phrase": "🔐",
+    "secret phrase": "🔓",
+    "metamask": "🦊",
+    "phantom": "👻",
+    "keystore": "📁",
+    "ledger": "📒",
+    "trezor": "🔐",
+    "cold storage": "❄️",
+    "private_key": "🗝️",
+    "xprv": "📜",
+    "encrypted": "🔒",
+    "kdfparams": "📑",
+    "cipher": "🔐",
+    "ciphertext": "🔏",
+    "btc": "₿",
+    "eth": "Ξ",
+    "exodus": "📂",
+    "trustwallet": "🔒",
+    "binance": "⚡",
+    "kraken": "🐙"
 }
 
-# Folders to exclude
+# Folders to exclude (excluding unnecessary asset folders)
 EXCLUDED_FOLDERS = [
     "node_modules", "__pycache__", ".git", ".svn", "build", "dist",
     "Library", "Logs", "Temp", "Cache", "Caches", "venv", "env",
     "VirtualEnv", "Anaconda3", "Miniconda3", "System Volume Information",
-    "$Recycle.Bin"
+    "$Recycle.Bin",
+    "Program Files\\Common Files",
+    "Program Files\\Windows Defender",
+    "Program Files\\WindowsApps",
+    "Assets", "Images", "Resources"  # Exclude common asset folders
 ] + CONFIG.get("exclude_paths", [])
 
 # File extensions to include or exclude
@@ -185,41 +221,54 @@ def contains_json_wallet_structure(file_path):
 def scan_spreadsheet(file_path):
     """
     Scan a spreadsheet file for crypto-related keywords.
+    Returns a list of matched keywords.
     """
+    matched_keywords = []
     try:
         if file_path.endswith(".csv"):
             with open(file_path, "r", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 for row in reader:
-                    if any(cell and any(keyword.lower() in str(cell).lower() for keyword in KEYWORDS_ICONS) for cell in row):
-                        return True
+                    for cell in row:
+                        for keyword in KEYWORDS_ICONS:
+                            pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+                            if re.search(pattern, str(cell).lower()):
+                                matched_keywords.append(keyword)
         else:
             workbook = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
             for sheet in workbook.sheetnames:
                 ws = workbook[sheet]
                 for row in ws.iter_rows(values_only=True):
-                    if any(cell and any(keyword.lower() in str(cell).lower() for keyword in KEYWORDS_ICONS) for cell in row):
-                        return True
+                    for cell in row:
+                        if cell:
+                            cell_str = str(cell).lower()
+                            for keyword in KEYWORDS_ICONS:
+                                pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+                                if re.search(pattern, cell_str):
+                                    matched_keywords.append(keyword)
     except Exception as e:
         logger.debug(f"Error reading spreadsheet {file_path}: {e}")
-    return False
+    return list(set(matched_keywords))  # Remove duplicates
 
 def detect_seed_phrase(content):
     """
     Detect potential seed phrases in the content.
+    Returns a tuple (found: bool, words: list)
     """
     words = re.findall(r'\b\w+\b', content.lower())
     for count in SEED_WORD_COUNTS:
         for i in range(len(words) - count + 1):
             word_sequence = words[i:i+count]
             if all(word in MNEMONIC_WORDLIST for word in word_sequence):
-                return True
-    return False
+                return True, word_sequence  # Return the matching sequence
+    return False, []
 
 def search_file_content(file_path):
     """
     Search the content of a file for crypto-related keywords and seed phrases.
+    Returns a list of matched keywords.
     """
+    matched_keywords = []
     try:
         if file_path.endswith(".txt") or '.' not in os.path.basename(file_path):
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -231,19 +280,25 @@ def search_file_content(file_path):
             reader = PdfReader(file_path)
             content = "\n".join(page.extract_text() or '' for page in reader.pages)
         else:
-            return False  # Unsupported file type for content scanning
+            return matched_keywords
 
-        if any(keyword.lower() in content.lower() for keyword in KEYWORDS_ICONS):
-            return True
-        if detect_seed_phrase(content):
-            return True
+        for keyword in KEYWORDS_ICONS:
+            pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+            if re.search(pattern, content.lower()):
+                matched_keywords.append(keyword)
+
+        seed_phrase_found, seed_phrase_words = detect_seed_phrase(content)
+        if seed_phrase_found:
+            matched_keywords.append("seed_phrase")
+
     except Exception as e:
         logger.debug(f"Error processing file {file_path}: {e}")
-    return False
+    return list(set(matched_keywords))  # Remove duplicates
 
 def process_file(file_path):
     """
     Process a single file to check for crypto-related content.
+    Returns a dictionary with file details if a match is found, else None.
     """
     try:
         file_name = os.path.basename(file_path)
@@ -255,31 +310,46 @@ def process_file(file_path):
         if INCLUDED_EXTENSIONS and file_extension not in INCLUDED_EXTENSIONS:
             return None
 
-        keyword_matches = [kw for kw in KEYWORDS_ICONS if kw.lower() in file_name.lower()]
+        matched_keywords = [kw for kw in KEYWORDS_ICONS if kw.lower() in file_name.lower()]
 
-        if "0x" in keyword_matches and not is_valid_ethereum_address(file_name):
-            keyword_matches.remove("0x")
+        # Validate Ethereum address if '0x' is present
+        if "0x" in matched_keywords and not is_valid_ethereum_address(file_name):
+            matched_keywords.remove("0x")
+        # Validate Bitcoin address
         if is_valid_bitcoin_address(file_name):
-            keyword_matches.append("bitcoin_address")
+            matched_keywords.append("bitcoin_address")
+        # Check for JSON wallet structure
         if file_extension == ".json" and contains_json_wallet_structure(file_path):
-            keyword_matches.append("json_wallet")
-        if file_extension in [".xlsx", ".xls", ".csv"] and scan_spreadsheet(file_path):
-            keyword_matches.append("spreadsheet_content")
-        if (not keyword_matches and file_extension in [".txt", ".docx", ".pdf", ".json"]):
-            if search_file_content(file_path):
-                keyword_matches.append("content_match")
+            matched_keywords.append("json_wallet")
+        # Scan spreadsheets
+        if file_extension in [".xlsx", ".xls", ".csv"]:
+            spreadsheet_keywords = scan_spreadsheet(file_path)
+            matched_keywords.extend(spreadsheet_keywords)
+        # Scan file content for other file types
+        if not matched_keywords and file_extension in [".txt", ".docx", ".pdf"]:
+            content_keywords = search_file_content(file_path)
+            matched_keywords.extend(content_keywords)
 
-        if keyword_matches:
-            icon = KEYWORDS_ICONS.get(keyword_matches[0], "📄")
+        # Contextual Validation: Skip if file is in a known safe directory
+        # (Add any directories you consider safe here)
+        safe_directories = [
+            os.path.join(os.environ.get('ProgramFiles', ''), 'SomeKnownSafeDir'),
+            # Add other safe directories as needed
+        ]
+        if any(file_path.startswith(safe_dir) for safe_dir in safe_directories):
+            return None
+
+        if matched_keywords:
+            icon = KEYWORDS_ICONS.get(matched_keywords[0], "📄")
             main_folder = os.path.basename(os.path.dirname(file_path))
 
             result = {
                 "Drive": os.path.splitdrive(file_path)[0],
                 "Main Folder": main_folder,
-                "Keyword Match": ", ".join(set(keyword_matches)),
+                "Keyword Match": ", ".join(set(matched_keywords)),
                 "File Extension": file_extension,
                 "File Name": file_name,
-                "File Path": file_path,
+                "Folder Path": os.path.dirname(file_path),
             }
             logger.info(f"{icon} Found: {file_name}")
             return result
@@ -290,6 +360,7 @@ def process_file(file_path):
 def search_files(drive):
     """
     Recursively searches the specified drive for files matching crypto-related keywords.
+    Returns a list of found items.
     """
     found_items = []
     file_paths = []
@@ -319,45 +390,47 @@ def export_results(found_items):
     text_file = os.path.join(DESKTOP_PATH, "Muffins_Treasure_Hunt_Path_Log.txt")
     excel_file = os.path.join(DESKTOP_PATH, "Muffins_Treasure_Hunt_Results.xlsx")
 
-    with open(text_file, "w", encoding="utf-8") as txt:
-        txt.write("🔍 Muffin's Treasure Hunt Results\n")
-        txt.write(f"🏆 Total treasures found: {len(found_items)}\n\n")
-        for item in found_items:
-            txt.write(f"Drive: {item['Drive']} | Folder: {item['Main Folder']} | File: {item['File Name']} | Path: {item['File Path']}\n")
+    # Export to Text File
+    try:
+        with open(text_file, "w", encoding="utf-8") as txt:
+            txt.write("🔍 Muffin's Treasure Hunt Results\n")
+            txt.write(f"🏆 Total treasures found: {len(found_items)}\n\n")
+            for item in found_items:
+                txt.write(f"Drive: {item['Drive']} | Folder: {item['Main Folder']} | File: {item['File Name']} | Path: {item['Folder Path']}\n")
+        logger.info(f"📄 Text File: {text_file}")
+    except Exception as e:
+        logger.error(f"Failed to write text file: {e}")
 
-    workbook = openpyxl.Workbook()
-    sheet = workbook.active
-    sheet.title = "Muffin's Results"
+    # Export to Excel Spreadsheet
+    try:
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Muffin's Results"
 
-    headers = ["Drive", "Main Folder", "Keyword Match", "File Extension", "File Name", "Folder Path"]
-    for col, header in enumerate(headers, 1):
-        cell = sheet.cell(row=1, column=col, value=header)
-        cell.font = Font(bold=True)
+        headers = ["Drive", "Main Folder", "Keyword Match", "File Extension", "File Name", "Folder Path"]
+        for col, header in enumerate(headers, 1):
+            cell = sheet.cell(row=1, column=col, value=header)
+            cell.font = Font(bold=True)
 
-    sheet.auto_filter.ref = f"A1:{get_column_letter(len(headers))}1"
+        sheet.auto_filter.ref = f"A1:{get_column_letter(len(headers))}1"
 
-    for row_num, item in enumerate(found_items, start=2):
-        sheet.cell(row=row_num, column=1, value=item["Drive"])
-        sheet.cell(row=row_num, column=2, value=item["Main Folder"])
-        sheet.cell(row=row_num, column=3, value=item["Keyword Match"])
-        sheet.cell(row=row_num, column=4, value=item["File Extension"])
-        sheet.cell(row=row_num, column=5, value=item["File Name"])
-        folder_path_cell = sheet.cell(row=row_num, column=6)
+        for row_num, item in enumerate(found_items, start=2):
+            sheet.cell(row=row_num, column=1, value=item["Drive"])
+            sheet.cell(row=row_num, column=2, value=item["Main Folder"])
+            sheet.cell(row=row_num, column=3, value=item["Keyword Match"])
+            sheet.cell(row=row_num, column=4, value=item["File Extension"])
+            sheet.cell(row=row_num, column=5, value=item["File Name"])
+            folder_path_cell = sheet.cell(row=row_num, column=6)
+            folder_path_cell.value = item["Folder Path"]
 
-        # Get the folder path
-        folder_path = os.path.dirname(item['File Path'])
+        for col in range(1, len(headers) + 1):
+            sheet.column_dimensions[get_column_letter(col)].width = 25
 
-        # Set the cell value to the folder path without setting a hyperlink
-        folder_path_cell.value = folder_path
+        workbook.save(excel_file)
+        logger.info(f"📊 Spreadsheet: {excel_file}")
+    except Exception as e:
+        logger.error(f"Failed to write Excel file: {e}")
 
-    for col in range(1, len(headers) + 1):
-        sheet.column_dimensions[get_column_letter(col)].width = 25
-
-    workbook.save(excel_file)
-
-    logger.info("\n🎉 Export Complete!")
-    logger.info(f"📄 Text File: {text_file}")
-    logger.info(f"📊 Spreadsheet: {excel_file}")
     logger.info(f"🏆 Total treasures found: {len(found_items)} 🐾")
 
 def muffins_treasure_hunt():
