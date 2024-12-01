@@ -1,0 +1,6 @@
+tqdm
+openpyxl
+PyPDF2
+python-docx
+pytesseract
+Pillow
