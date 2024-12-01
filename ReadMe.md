@@ -38,8 +38,6 @@ Open your terminal or command prompt and navigate to the directory where you wan
 git clone https://github.com/mskiny/muffins-treasure-hunt.git
 ```
 
-*Replace `yourusername` with your actual GitHub username.*
-
 #### 2. **Navigate to the Project Directory**
 
 ```bash
