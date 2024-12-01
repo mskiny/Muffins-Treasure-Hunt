@@ -1,5 +1,6 @@
 # 🐶 Muffin's Treasure Hunt 🐾
 
+
 ## 🏆 Sniffing Out Crypto Treasures! 🏆
 
 Welcome to **Muffin's Treasure Hunt**! 🐾🐶 Your friendly neighborhood doggo here, ready to help you sniff out those elusive crypto treasures hiding in the nooks and crannies of your computer. Whether it's wallets, keys, recovery phrases, or other sensitive information, Muffin's got your back!
@@ -28,7 +29,9 @@ Before you begin, ensure you have the following installed on your computer:
 - **Visual Studio Code (VS Code)** 💻
   - [Download VS Code](https://code.visualstudio.com/download)
 
-### 🛠️ Installation Steps
+---
+
+## 🛠️ Installation Steps
 
 #### 1. **Clone the Repository**
 
@@ -37,7 +40,6 @@ Open your terminal or command prompt and navigate to the directory where you wan
 ```bash
 git clone https://github.com/mskiny/muffins-treasure-hunt.git
 ```
-
 #### 2. **Navigate to the Project Directory**
 
 ```bash
@@ -46,7 +48,7 @@ cd muffins-treasure-hunt
 
 #### 3. **Set Up a Virtual Environment**
 
-It's a good practice to use a virtual environment to manage dependencies.
+It's best to use a virtual environment to manage dependencies without affecting your global Python setup.
 
 - **Windows:**
 
@@ -64,17 +66,20 @@ It's a good practice to use a virtual environment to manage dependencies.
 
 #### 4. **Install Required Libraries**
 
-With the virtual environment activated, install the necessary Python packages:
+With your virtual environment activated, install the necessary Python packages:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-*If you don't have a `requirements.txt`, you can install them manually:*
+📝 **Package Descriptions:**
 
-```bash
-pip install openpyxl PyPDF2 python-docx pytesseract pillow tqdm
-```
+- **`tqdm`** 🐢: Adds a stylish progress bar to your loops, making your treasure hunt feel even more dynamic!
+- **`openpyxl`** 📊: Handles Excel file creation and manipulation, perfect for those detailed treasure reports.
+- **`PyPDF2`** 📄: Reads and extracts text from PDF files, ensuring no treasure goes unnoticed.
+- **`python-docx`** 📑: Interacts with Word documents, keeping an eye out for crypto clues.
+- **`pytesseract`** 🖼️: Integrates OCR capabilities to extract text from images—because treasures can be hidden in pictures too!
+- **`Pillow`** 🖌️: Enhances image processing, making sure your OCR hunts are spot-on.
 
 #### 5. **Install Tesseract OCR**
 
@@ -97,9 +102,9 @@ pip install openpyxl PyPDF2 python-docx pytesseract pillow tqdm
   brew install tesseract
   ```
 
-### 🐾 Running the Script
+---
 
-Now that everything is set up, it's time to let Muffin hunt for treasures!
+## 🐾 Running Muffin's Treasure Hunt
 
 1. **Open the Project in VS Code**
 
@@ -129,9 +134,9 @@ Now that everything is set up, it's time to let Muffin hunt for treasures!
 
 4. **Follow the On-Screen Prompts**
 
-   - Select the drives you want Muffin to search.
-   - Let Muffin do the magic! 🪄
-   - Review the generated reports on your Desktop in the `Muffins_Treasure_Hunt_Results` folder.
+   - **Select Drives:** Choose the drives you want Muffin to search or type `ALL` to scan all available drives.
+   - **Sit Back & Relax:** Let Muffin do the magic! 🪄
+   - **Review Reports:** After the hunt, check the generated reports on your Desktop in the `Muffins_Treasure_Hunt_Results` folder.
 
 ---
 
@@ -139,37 +144,20 @@ Now that everything is set up, it's time to let Muffin hunt for treasures!
 
 After the hunt, Muffin will generate two reports:
 
-- **Text File:** `Muffins_Treasure_Hunt_Path_Log.txt`
-- **Excel Spreadsheet:** `Muffins_Treasure_Hunt_Results.xlsx`
+- **Text File:** `Muffins_Treasure_Hunt_Path_Log.txt` – A plain text summary of all findings.
+- **Excel Spreadsheet:** `Muffins_Treasure_Hunt_Results.xlsx` – A detailed, organized spreadsheet with all the treasures Muffin uncovered.
 
-Find them on your Desktop in the `Muffins_Treasure_Hunt_Results` folder. Dive in and see what treasures Muffin uncovered! 🎉
+Both files will be located in the `Muffins_Treasure_Hunt_Results` folder on your Desktop. Dive in and see what treasures await! 🎉
 
 ---
 
-## 🐾 Contributing
+## 📚 Additional Notes
 
-Muffin's Treasure Hunt is a community-driven project. If you'd like to contribute:
+- **BIP39 Wordlist:** Ensure that the `bip39_wordlist.txt` file is present in the same directory as `Muffins_Treasure_Hunt.py`. This file is essential for detecting valid seed phrases.
 
-1. Fork the repository.
-2. Create your feature branch:
+- **Tesseract Configuration:** If Tesseract OCR is not added to your system's PATH, make sure to specify its path in the script by uncommenting and updating the relevant line as mentioned in the installation steps.
 
-   ```bash
-   git checkout -b feature/YourFeatureName
-   ```
-
-3. Commit your changes:
-
-   ```bash
-   git commit -m "Add some feature"
-   ```
-
-4. Push to the branch:
-
-   ```bash
-   git push origin feature/YourFeatureName
-   ```
-
-5. Open a pull request! 🐕
+- **Operating System Compatibility:** The script is compatible with both Windows and Mac. Adjust the installation steps accordingly based on your operating system.
 
 ---
 
